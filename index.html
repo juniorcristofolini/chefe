@@ -49,8 +49,20 @@
       flex-shrink: 0;
     }
 
+    #header-info { flex: 1; }
     #header-info h2 { font-size: 16px; font-weight: 600; }
     #header-info span { font-size: 12px; color: #4ade80; }
+
+    #clear-btn {
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #clear-btn:hover { color: #e8562a; }
 
     #messages {
       flex: 1;
@@ -97,6 +109,16 @@
       color: #555;
       margin-top: 4px;
       padding: 0 4px;
+    }
+
+    .date-divider {
+      align-self: center;
+      font-size: 11px;
+      color: #555;
+      background: #222;
+      padding: 4px 12px;
+      border-radius: 10px;
+      margin: 4px 0;
     }
 
     #typing {
@@ -175,6 +197,45 @@
     #messages::-webkit-scrollbar { width: 4px; }
     #messages::-webkit-scrollbar-track { background: transparent; }
     #messages::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    #modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #modal.show { display: flex; }
+    #modal-box {
+      background: #222;
+      border-radius: 16px;
+      padding: 24px;
+      width: 280px;
+      text-align: center;
+    }
+    #modal-box h3 { font-size: 16px; margin-bottom: 8px; }
+    #modal-box p { font-size: 13px; color: #888; margin-bottom: 20px; }
+    #modal-box .btns { display: flex; gap: 10px; }
+    #modal-box button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #btn-cancel { background: #333; color: #f0f0f0; }
+    #btn-confirm { background: linear-gradient(135deg, #f5a623, #e8562a); color: white; }
+
+    #loading {
+      align-self: center;
+      color: #555;
+      font-size: 13px;
+      padding: 20px;
+    }
   </style>
 </head>
 <body>
@@ -183,15 +244,13 @@
     <div id="avatar">👑</div>
     <div id="header-info">
       <h2>Chefe</h2>
-      <span>● online agora</span>
+      <span id="status">● carregando...</span>
     </div>
+    <button id="clear-btn" title="Limpar histórico">🗑️</button>
   </div>
 
   <div id="messages">
-    <div class="msg bot">
-      <div class="bubble">Fala! 👋 Sou o Chefe, seu assistente pessoal. Pode mandar ver — tô aqui pra ajudar no que precisar!</div>
-      <span class="timestamp">agora</span>
-    </div>
+    <div id="loading">Carregando histórico...</div>
     <div id="typing" class="msg bot">
       <div class="bubble">
         <div class="dot"></div>
@@ -209,13 +268,21 @@
   </div>
 </div>
 
-<script>
-  const messagesEl = document.getElementById('messages');
-  const inputEl    = document.getElementById('input');
-  const sendBtn    = document.getElementById('send-btn');
-  const typingEl   = document.getElementById('typing');
+<div id="modal">
+  <div id="modal-box">
+    <h3>Limpar histórico?</h3>
+    <p>Todas as conversas serão apagadas permanentemente da nuvem.</p>
+    <div class="btns">
+      <button id="btn-cancel">Cancelar</button>
+      <button id="btn-confirm">Limpar</button>
+    </div>
+  </div>
+</div>
 
-  const WORKER_URL = 'https://chefe-api.junior161080.workers.dev';
+<script>
+  const WORKER_URL    = 'https://chefe-api.junior161080.workers.dev';
+  const SUPA_URL      = 'https://xpoibyxprkfcrjtljqdh.supabase.co';
+  const SUPA_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhwb2lieXhwcmtmY3JqdGxqcWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNjYyNjgsImV4cCI6MjA5MDk0MjI2OH0.vX_5sXFaoUKluezIsJSNHqMo7Yf-u2c4DQm9lNwLfDw';
 
   const SYSTEM_PROMPT = `Você é o Chefe, um assistente pessoal casual e descontraído. 
 Você fala de forma amigável, usa gírias leves do português brasileiro quando faz sentido, 
@@ -223,18 +290,114 @@ Você fala de forma amigável, usa gírias leves do português brasileiro quando
 Trate o usuário como um amigo próximo, mas seja sempre útil e confiável.
 Responda sempre em português brasileiro.`;
 
-  let history = [];
+  const messagesEl = document.getElementById('messages');
+  const inputEl    = document.getElementById('input');
+  const sendBtn    = document.getElementById('send-btn');
+  const typingEl   = document.getElementById('typing');
+  const clearBtn   = document.getElementById('clear-btn');
+  const modal      = document.getElementById('modal');
+  const btnCancel  = document.getElementById('btn-cancel');
+  const btnConfirm = document.getElementById('btn-confirm');
+  const statusEl   = document.getElementById('status');
+  const loadingEl  = document.getElementById('loading');
 
-  function getTime() {
-    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  let apiHistory = [];
+
+  // Supabase helpers
+  async function supaFetch(path, options = {}) {
+    const res = await fetch(`${SUPA_URL}/rest/v1${path}`, {
+      ...options,
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': options.prefer || '',
+        ...options.headers
+      }
+    });
+    if (!res.ok && res.status !== 204) throw new Error(await res.text());
+    if (res.status === 204) return null;
+    return res.json();
   }
 
-  function addMessage(role, text) {
-    typingEl.style.display = 'none';
+  function formatDate(ts) {
+    const d = new Date(ts);
+    const hoje = new Date();
+    const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
+    if (d.toDateString() === hoje.toDateString()) return 'Hoje';
+    if (d.toDateString() === ontem.toDateString()) return 'Ontem';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  function formatTime(ts) {
+    return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderMessage(role, content, ts) {
     const div = document.createElement('div');
     div.className = `msg ${role === 'user' ? 'user' : 'bot'}`;
-    div.innerHTML = `<div class="bubble">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><span class="timestamp">${getTime()}</span>`;
+    div.innerHTML = `<div class="bubble">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><span class="timestamp">${formatTime(ts)}</span>`;
     messagesEl.insertBefore(div, typingEl);
+  }
+
+  function addDateDivider(label) {
+    const div = document.createElement('div');
+    div.className = 'date-divider';
+    div.textContent = label;
+    messagesEl.insertBefore(div, typingEl);
+  }
+
+  async function loadHistory() {
+    try {
+      const data = await supaFetch('/mensagens?order=created_at.asc');
+      loadingEl.remove();
+
+      if (!data || data.length === 0) {
+        // Boas vindas na primeira vez
+        await saveMessage('assistant', 'Fala! 👋 Sou o Chefe, seu assistente pessoal. Pode mandar ver — tô aqui pra ajudar no que precisar!');
+        return;
+      }
+
+      let lastDate = '';
+      for (const m of data) {
+        const dateLabel = formatDate(m.created_at);
+        if (dateLabel !== lastDate) {
+          addDateDivider(dateLabel);
+          lastDate = dateLabel;
+        }
+        renderMessage(m.role, m.content, m.created_at);
+        apiHistory.push({ role: m.role, content: m.content });
+      }
+
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      statusEl.textContent = '● online agora';
+    } catch (e) {
+      loadingEl.textContent = 'Erro ao carregar histórico.';
+      statusEl.textContent = '● offline';
+    }
+  }
+
+  async function saveMessage(role, content) {
+    const ts = new Date().toISOString();
+    try {
+      await supaFetch('/mensagens', {
+        method: 'POST',
+        prefer: 'return=minimal',
+        body: JSON.stringify({ role, content })
+      });
+    } catch (e) {
+      console.error('Erro ao salvar:', e);
+    }
+
+    // Adiciona divisor de data se necessário
+    const dateLabel = formatDate(ts);
+    const dividers = messagesEl.querySelectorAll('.date-divider');
+    const lastDivider = dividers[dividers.length - 1];
+    if (!lastDivider || lastDivider.textContent !== dateLabel) {
+      addDateDivider(dateLabel);
+    }
+
+    renderMessage(role, content, ts);
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
@@ -251,8 +414,8 @@ Responda sempre em português brasileiro.`;
     inputEl.style.height = 'auto';
     sendBtn.disabled = true;
 
-    addMessage('user', text);
-    history.push({ role: 'user', content: text });
+    await saveMessage('user', text);
+    apiHistory.push({ role: 'user', content: text });
     showTyping();
 
     try {
@@ -263,22 +426,38 @@ Responda sempre em português brasileiro.`;
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           system: SYSTEM_PROMPT,
-          messages: history
+          messages: apiHistory
         })
       });
 
       const data = await response.json();
       const reply = data.content?.map(b => b.text || '').join('') || 'Eita, deu um problema aqui. Tenta de novo?';
 
-      history.push({ role: 'assistant', content: reply });
-      addMessage('bot', reply);
+      typingEl.style.display = 'none';
+      await saveMessage('assistant', reply);
+      apiHistory.push({ role: 'assistant', content: reply });
     } catch (e) {
       typingEl.style.display = 'none';
-      addMessage('bot', 'Ops, perdi a conexão por um segundo. Tenta de novo! 🙏');
+      await saveMessage('assistant', 'Ops, perdi a conexão por um segundo. Tenta de novo! 🙏');
     }
 
     sendBtn.disabled = false;
   }
+
+  // Limpar histórico
+  clearBtn.addEventListener('click', () => modal.classList.add('show'));
+  btnCancel.addEventListener('click', () => modal.classList.remove('show'));
+  btnConfirm.addEventListener('click', async () => {
+    modal.classList.remove('show');
+    try {
+      await supaFetch('/mensagens?id=gte.0', { method: 'DELETE' });
+      apiHistory = [];
+      Array.from(messagesEl.querySelectorAll('.msg:not(#typing), .date-divider')).forEach(el => el.remove());
+      await saveMessage('assistant', 'Histórico limpo! Começando do zero. 😊');
+    } catch (e) {
+      console.error('Erro ao limpar:', e);
+    }
+  });
 
   sendBtn.addEventListener('click', sendMessage);
 
@@ -295,10 +474,10 @@ Responda sempre em português brasileiro.`;
   });
 
   inputEl.addEventListener('focus', () => {
-    setTimeout(() => {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }, 300);
+    setTimeout(() => messagesEl.scrollTop = messagesEl.scrollHeight, 300);
   });
+
+  loadHistory();
 </script>
 </body>
 </html>
