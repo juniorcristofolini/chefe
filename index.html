@@ -18,14 +18,138 @@
       color: #f0f0f0;
     }
 
-    #app {
+    /* ── LOGIN SCREEN ── */
+    #login-screen {
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+      background: #0f0f0f;
+      gap: 24px;
+      padding: 40px 32px;
+    }
+
+    #login-screen.hidden { display: none; }
+
+    .login-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f5a623, #e8562a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin-bottom: 8px;
+    }
+
+    .login-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .login-subtitle {
+      font-size: 14px;
+      color: #666;
+      text-align: center;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .login-box input {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 14px 18px;
+      color: #f0f0f0;
+      font-size: 16px;
+      outline: none;
+      width: 100%;
+      -webkit-appearance: none;
+    }
+
+    .login-box input:focus {
+      border-color: #f5a623;
+    }
+
+    .login-box input::placeholder { color: #444; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f5a623, #e8562a);
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-secondary {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 14px;
+      color: #f0f0f0;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .faceid-icon {
+      font-size: 22px;
+    }
+
+    .login-error {
+      color: #e8562a;
+      font-size: 13px;
+      text-align: center;
+      min-height: 18px;
+    }
+
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #444;
+      font-size: 12px;
+    }
+
+    .login-divider::before,
+    .login-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #2a2a2a;
+    }
+
+    /* ── APP ── */
+    #app {
+      display: none;
       flex-direction: column;
       height: 100dvh;
       max-width: 480px;
       margin: 0 auto;
       background: #1a1a1a;
     }
+
+    #app.visible { display: flex; }
 
     #header {
       padding: 16px 20px;
@@ -53,7 +177,7 @@
     #header-info h2 { font-size: 16px; font-weight: 600; }
     #header-info span { font-size: 12px; color: #4ade80; }
 
-    #clear-btn {
+    .header-btn {
       background: none;
       border: none;
       color: #555;
@@ -62,7 +186,7 @@
       padding: 4px;
       -webkit-tap-highlight-color: transparent;
     }
-    #clear-btn:hover { color: #e8562a; }
+    .header-btn:hover { color: #e8562a; }
 
     #messages {
       flex: 1;
@@ -187,9 +311,8 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: all 0.2s;
-      -webkit-tap-highlight-color: transparent;
       font-size: 18px;
+      -webkit-tap-highlight-color: transparent;
     }
 
     #mic-btn.recording {
@@ -213,11 +336,10 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: opacity 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
 
-    #send-btn:disabled { opacity: 0.4; cursor: default; }
+    #send-btn:disabled { opacity: 0.4; }
     #send-btn svg { width: 18px; height: 18px; fill: white; }
 
     #messages::-webkit-scrollbar { width: 4px; }
@@ -245,32 +367,46 @@
     #modal-box p { font-size: 13px; color: #888; margin-bottom: 20px; }
     #modal-box .btns { display: flex; gap: 10px; }
     #modal-box button {
-      flex: 1;
-      padding: 10px;
-      border-radius: 10px;
-      border: none;
-      font-size: 14px;
-      cursor: pointer;
-      font-weight: 600;
+      flex: 1; padding: 10px; border-radius: 10px;
+      border: none; font-size: 14px; cursor: pointer; font-weight: 600;
     }
     #btn-cancel { background: #333; color: #f0f0f0; }
     #btn-confirm { background: linear-gradient(135deg, #f5a623, #e8562a); color: white; }
 
-    #loading {
-      align-self: center;
-      color: #555;
-      font-size: 13px;
-      padding: 20px;
-    }
-
-    .audio-tag {
-      font-size: 11px;
-      color: rgba(255,255,255,0.7);
-      margin-top: 4px;
-    }
+    #loading { align-self: center; color: #555; font-size: 13px; padding: 20px; }
   </style>
 </head>
 <body>
+
+<!-- TELA DE LOGIN -->
+<div id="login-screen">
+  <div class="login-avatar">👑</div>
+  <div class="login-title">Chefe</div>
+  <div class="login-subtitle" id="login-subtitle">Seu assistente pessoal</div>
+
+  <div class="login-box">
+    <div class="login-error" id="login-error"></div>
+
+    <!-- Setup: criar senha -->
+    <div id="setup-section">
+      <input type="password" id="setup-pass" placeholder="Crie uma senha" autocomplete="new-password"/>
+      <input type="password" id="setup-pass2" placeholder="Confirme a senha" autocomplete="new-password" style="margin-top:8px"/>
+      <button class="btn-primary" id="btn-setup" style="margin-top:8px">Criar senha e entrar</button>
+    </div>
+
+    <!-- Login: senha + face id -->
+    <div id="login-section" style="display:none; flex-direction:column; gap:12px;">
+      <button class="btn-secondary" id="btn-faceid">
+        <span class="faceid-icon">🔒</span> Entrar com Face ID
+      </button>
+      <div class="login-divider">ou</div>
+      <input type="password" id="login-pass" placeholder="Digite sua senha" autocomplete="current-password"/>
+      <button class="btn-primary" id="btn-login">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
 <div id="app">
   <div id="header">
     <div id="avatar">👑</div>
@@ -278,23 +414,22 @@
       <h2>Chefe</h2>
       <span id="status">● carregando...</span>
     </div>
-    <button id="clear-btn" title="Limpar histórico">🗑️</button>
+    <button class="header-btn" id="logout-btn" title="Sair">🔒</button>
+    <button class="header-btn" id="clear-btn" title="Limpar histórico">🗑️</button>
   </div>
 
   <div id="messages">
     <div id="loading">Carregando histórico...</div>
     <div id="typing" class="msg bot">
       <div class="bubble">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
       </div>
     </div>
   </div>
 
   <div id="input-area">
     <textarea id="input" rows="1" placeholder="Manda uma mensagem..."></textarea>
-    <button id="mic-btn" title="Gravar áudio">🎙️</button>
+    <button id="mic-btn">🎙️</button>
     <button id="send-btn">
       <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
     </button>
@@ -323,6 +458,22 @@ Você fala de forma amigável, usa gírias leves do português brasileiro quando
 Trate o usuário como um amigo próximo, mas seja sempre útil e confiável.
 Responda sempre em português brasileiro.`;
 
+  // ── AUTH ELEMENTS ──
+  const loginScreen   = document.getElementById('login-screen');
+  const loginSubtitle = document.getElementById('login-subtitle');
+  const loginError    = document.getElementById('login-error');
+  const setupSection  = document.getElementById('setup-section');
+  const loginSection  = document.getElementById('login-section');
+  const setupPass     = document.getElementById('setup-pass');
+  const setupPass2    = document.getElementById('setup-pass2');
+  const btnSetup      = document.getElementById('btn-setup');
+  const loginPass     = document.getElementById('login-pass');
+  const btnLogin      = document.getElementById('btn-login');
+  const btnFaceid     = document.getElementById('btn-faceid');
+  const logoutBtn     = document.getElementById('logout-btn');
+
+  // ── APP ELEMENTS ──
+  const appEl      = document.getElementById('app');
   const messagesEl = document.getElementById('messages');
   const inputEl    = document.getElementById('input');
   const sendBtn    = document.getElementById('send-btn');
@@ -340,7 +491,139 @@ Responda sempre em português brasileiro.`;
   let audioChunks = [];
   let isRecording = false;
 
-  // Supabase helpers
+  // ── HASH PASSWORD ──
+  async function hashPassword(password) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ── WEBAUTHN (Face ID) ──
+  async function registerFaceID() {
+    try {
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: { name: 'Chefe', id: location.hostname },
+          user: { id: new Uint8Array(16), name: 'usuario', displayName: 'Usuário' },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'required'
+          },
+          timeout: 60000
+        }
+      });
+      if (cred) {
+        localStorage.setItem('chefe_cred_id', btoa(String.fromCharCode(...new Uint8Array(cred.rawId))));
+        return true;
+      }
+    } catch (e) {
+      console.log('FaceID registro falhou:', e);
+    }
+    return false;
+  }
+
+  async function authenticateFaceID() {
+    const credIdStr = localStorage.getItem('chefe_cred_id');
+    if (!credIdStr) return false;
+    try {
+      const credId = Uint8Array.from(atob(credIdStr), c => c.charCodeAt(0));
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          rpId: location.hostname,
+          allowCredentials: [{ type: 'public-key', id: credId }],
+          userVerification: 'required',
+          timeout: 60000
+        }
+      });
+      return !!assertion;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ── AUTH FLOW ──
+  function checkFirstTime() {
+    const hasPass = localStorage.getItem('chefe_pass');
+    if (!hasPass) {
+      setupSection.style.display = 'flex';
+      setupSection.style.flexDirection = 'column';
+      loginSection.style.display = 'none';
+      loginSubtitle.textContent = 'Crie uma senha para proteger o Chefe';
+    } else {
+      setupSection.style.display = 'none';
+      loginSection.style.display = 'flex';
+      loginSubtitle.textContent = 'Bem-vindo de volta!';
+      // Tenta Face ID automaticamente
+      setTimeout(() => tryFaceID(), 500);
+    }
+  }
+
+  async function tryFaceID() {
+    const hasCred = localStorage.getItem('chefe_cred_id');
+    if (!hasCred) return;
+    btnFaceid.textContent = '🔒 Verificando...';
+    const ok = await authenticateFaceID();
+    if (ok) {
+      enterApp();
+    } else {
+      btnFaceid.innerHTML = '<span class="faceid-icon">🔒</span> Entrar com Face ID';
+    }
+  }
+
+  btnSetup.addEventListener('click', async () => {
+    const p1 = setupPass.value;
+    const p2 = setupPass2.value;
+    if (p1.length < 4) { loginError.textContent = 'Senha muito curta (mín. 4 caracteres)'; return; }
+    if (p1 !== p2) { loginError.textContent = 'As senhas não coincidem'; return; }
+    loginError.textContent = '';
+    const hash = await hashPassword(p1);
+    localStorage.setItem('chefe_pass', hash);
+    // Tenta registrar Face ID
+    const faceOk = await registerFaceID();
+    if (!faceOk) {
+      loginError.textContent = 'Face ID não registrado, mas pode entrar com senha.';
+    }
+    enterApp();
+  });
+
+  btnLogin.addEventListener('click', async () => {
+    const p = loginPass.value;
+    const hash = await hashPassword(p);
+    const saved = localStorage.getItem('chefe_pass');
+    if (hash === saved) {
+      loginError.textContent = '';
+      enterApp();
+    } else {
+      loginError.textContent = 'Senha incorreta';
+    }
+  });
+
+  btnFaceid.addEventListener('click', tryFaceID);
+
+  logoutBtn.addEventListener('click', () => {
+    appEl.classList.remove('visible');
+    loginScreen.classList.remove('hidden');
+    loginPass.value = '';
+    loginError.textContent = '';
+    apiHistory = [];
+    Array.from(messagesEl.querySelectorAll('.msg:not(#typing), .date-divider')).forEach(el => el.remove());
+    const newLoading = document.createElement('div');
+    newLoading.id = 'loading';
+    newLoading.textContent = 'Carregando histórico...';
+    messagesEl.insertBefore(newLoading, typingEl);
+  });
+
+  function enterApp() {
+    loginScreen.classList.add('hidden');
+    appEl.classList.add('visible');
+    loadHistory();
+  }
+
+  // ── SUPABASE ──
   async function supaFetch(path, options = {}) {
     const res = await fetch(`${SUPA_URL}/rest/v1${path}`, {
       ...options,
@@ -370,11 +653,10 @@ Responda sempre em português brasileiro.`;
     return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function renderMessage(role, content, ts, isAudio = false) {
+  function renderMessage(role, content, ts) {
     const div = document.createElement('div');
     div.className = `msg ${role === 'user' ? 'user' : 'bot'}`;
-    const audioTag = isAudio ? `<div class="audio-tag">🎙️ áudio</div>` : '';
-    div.innerHTML = `<div class="bubble">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}${audioTag}</div><span class="timestamp">${formatTime(ts)}</span>`;
+    div.innerHTML = `<div class="bubble">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><span class="timestamp">${formatTime(ts)}</span>`;
     messagesEl.insertBefore(div, typingEl);
   }
 
@@ -388,7 +670,8 @@ Responda sempre em português brasileiro.`;
   async function loadHistory() {
     try {
       const data = await supaFetch('/mensagens?order=created_at.asc');
-      loadingEl.remove();
+      const loading = document.getElementById('loading');
+      if (loading) loading.remove();
 
       if (!data || data.length === 0) {
         await saveMessage('assistant', 'Fala! 👋 Sou o Chefe, seu assistente pessoal. Pode mandar ver — tô aqui pra ajudar no que precisar!');
@@ -398,10 +681,7 @@ Responda sempre em português brasileiro.`;
       let lastDate = '';
       for (const m of data) {
         const dateLabel = formatDate(m.created_at);
-        if (dateLabel !== lastDate) {
-          addDateDivider(dateLabel);
-          lastDate = dateLabel;
-        }
+        if (dateLabel !== lastDate) { addDateDivider(dateLabel); lastDate = dateLabel; }
         renderMessage(m.role, m.content, m.created_at);
         apiHistory.push({ role: m.role, content: m.content });
       }
@@ -409,7 +689,8 @@ Responda sempre em português brasileiro.`;
       messagesEl.scrollTop = messagesEl.scrollHeight;
       statusEl.textContent = '● online agora';
     } catch (e) {
-      loadingEl.textContent = 'Erro ao carregar histórico.';
+      const loading = document.getElementById('loading');
+      if (loading) loading.textContent = 'Erro ao carregar histórico.';
       statusEl.textContent = '● offline';
     }
   }
@@ -422,16 +703,12 @@ Responda sempre em português brasileiro.`;
         prefer: 'return=minimal',
         body: JSON.stringify({ role, content })
       });
-    } catch (e) {
-      console.error('Erro ao salvar:', e);
-    }
+    } catch (e) { console.error('Erro ao salvar:', e); }
 
     const dateLabel = formatDate(ts);
     const dividers = messagesEl.querySelectorAll('.date-divider');
     const lastDivider = dividers[dividers.length - 1];
-    if (!lastDivider || lastDivider.textContent !== dateLabel) {
-      addDateDivider(dateLabel);
-    }
+    if (!lastDivider || lastDivider.textContent !== dateLabel) addDateDivider(dateLabel);
 
     renderMessage(role, content, ts);
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -482,12 +759,7 @@ Responda sempre em português brasileiro.`;
     statusEl.textContent = '● transcrevendo...';
     const formData = new FormData();
     formData.append('audio', blob, 'audio.webm');
-
-    const response = await fetch(`${WORKER_URL}/transcribe`, {
-      method: 'POST',
-      body: formData
-    });
-
+    const response = await fetch(`${WORKER_URL}/transcribe`, { method: 'POST', body: formData });
     const data = await response.json();
     statusEl.textContent = '● online agora';
     return data.text || '';
@@ -495,17 +767,14 @@ Responda sempre em português brasileiro.`;
 
   async function toggleRecording() {
     if (isRecording) {
-      // Para gravação
       mediaRecorder.stop();
       isRecording = false;
       micBtn.classList.remove('recording');
       micBtn.textContent = '🎙️';
     } else {
-      // Inicia gravação
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioChunks = [];
-
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
         mediaRecorder.onstop = async () => {
@@ -513,28 +782,15 @@ Responda sempre em português brasileiro.`;
           const blob = new Blob(audioChunks, { type: 'audio/webm' });
           micBtn.disabled = true;
           sendBtn.disabled = true;
-          statusEl.textContent = '● transcrevendo...';
-
           try {
             const text = await transcribeAudio(blob);
-            if (text) {
-              inputEl.value = text;
-              inputEl.style.height = 'auto';
-              inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
-              // Envia automaticamente
-              inputEl.value = '';
-              inputEl.style.height = 'auto';
-              await sendText(text);
-            }
+            if (text) await sendText(text);
           } catch (e) {
-            statusEl.textContent = '● online agora';
             await saveMessage('assistant', 'Não consegui transcrever o áudio. Tenta de novo! 🙏');
           }
-
           micBtn.disabled = false;
           sendBtn.disabled = false;
         };
-
         mediaRecorder.start();
         isRecording = true;
         micBtn.classList.add('recording');
@@ -545,7 +801,6 @@ Responda sempre em português brasileiro.`;
     }
   }
 
-  // Eventos
   sendBtn.addEventListener('click', async () => {
     const text = inputEl.value.trim();
     if (!text) return;
@@ -557,10 +812,7 @@ Responda sempre em português brasileiro.`;
   micBtn.addEventListener('click', toggleRecording);
 
   inputEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendBtn.click();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
   });
 
   inputEl.addEventListener('input', () => {
@@ -581,12 +833,11 @@ Responda sempre em português brasileiro.`;
       apiHistory = [];
       Array.from(messagesEl.querySelectorAll('.msg:not(#typing), .date-divider')).forEach(el => el.remove());
       await saveMessage('assistant', 'Histórico limpo! Começando do zero. 😊');
-    } catch (e) {
-      console.error('Erro ao limpar:', e);
-    }
+    } catch (e) { console.error('Erro ao limpar:', e); }
   });
 
-  loadHistory();
+  // ── INIT ──
+  checkFirstTime();
 </script>
 </body>
 </html>
