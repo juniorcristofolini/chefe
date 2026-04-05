@@ -153,7 +153,7 @@
       background: #111;
       border-top: 1px solid #2a2a2a;
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: flex-end;
       flex-shrink: 0;
     }
@@ -175,6 +175,32 @@
     }
 
     #input::placeholder { color: #555; }
+
+    #mic-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      font-size: 18px;
+    }
+
+    #mic-btn.recording {
+      background: #e8562a;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
 
     #send-btn {
       width: 42px;
@@ -236,6 +262,12 @@
       font-size: 13px;
       padding: 20px;
     }
+
+    .audio-tag {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -262,6 +294,7 @@
 
   <div id="input-area">
     <textarea id="input" rows="1" placeholder="Manda uma mensagem..."></textarea>
+    <button id="mic-btn" title="Gravar áudio">🎙️</button>
     <button id="send-btn">
       <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
     </button>
@@ -280,9 +313,9 @@
 </div>
 
 <script>
-  const WORKER_URL    = 'https://chefe-api.junior161080.workers.dev';
-  const SUPA_URL      = 'https://xpoibyxprkfcrjtljqdh.supabase.co';
-  const SUPA_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhwb2lieXhwcmtmY3JqdGxqcWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNjYyNjgsImV4cCI6MjA5MDk0MjI2OH0.vX_5sXFaoUKluezIsJSNHqMo7Yf-u2c4DQm9lNwLfDw';
+  const WORKER_URL = 'https://chefe-api.junior161080.workers.dev';
+  const SUPA_URL   = 'https://xpoibyxprkfcrjtljqdh.supabase.co';
+  const SUPA_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhwb2lieXhwcmtmY3JqdGxqcWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNjYyNjgsImV4cCI6MjA5MDk0MjI2OH0.vX_5sXFaoUKluezIsJSNHqMo7Yf-u2c4DQm9lNwLfDw';
 
   const SYSTEM_PROMPT = `Você é o Chefe, um assistente pessoal casual e descontraído. 
 Você fala de forma amigável, usa gírias leves do português brasileiro quando faz sentido, 
@@ -293,6 +326,7 @@ Responda sempre em português brasileiro.`;
   const messagesEl = document.getElementById('messages');
   const inputEl    = document.getElementById('input');
   const sendBtn    = document.getElementById('send-btn');
+  const micBtn     = document.getElementById('mic-btn');
   const typingEl   = document.getElementById('typing');
   const clearBtn   = document.getElementById('clear-btn');
   const modal      = document.getElementById('modal');
@@ -302,6 +336,9 @@ Responda sempre em português brasileiro.`;
   const loadingEl  = document.getElementById('loading');
 
   let apiHistory = [];
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
 
   // Supabase helpers
   async function supaFetch(path, options = {}) {
@@ -333,10 +370,11 @@ Responda sempre em português brasileiro.`;
     return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function renderMessage(role, content, ts) {
+  function renderMessage(role, content, ts, isAudio = false) {
     const div = document.createElement('div');
     div.className = `msg ${role === 'user' ? 'user' : 'bot'}`;
-    div.innerHTML = `<div class="bubble">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><span class="timestamp">${formatTime(ts)}</span>`;
+    const audioTag = isAudio ? `<div class="audio-tag">🎙️ áudio</div>` : '';
+    div.innerHTML = `<div class="bubble">${content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}${audioTag}</div><span class="timestamp">${formatTime(ts)}</span>`;
     messagesEl.insertBefore(div, typingEl);
   }
 
@@ -353,7 +391,6 @@ Responda sempre em português brasileiro.`;
       loadingEl.remove();
 
       if (!data || data.length === 0) {
-        // Boas vindas na primeira vez
         await saveMessage('assistant', 'Fala! 👋 Sou o Chefe, seu assistente pessoal. Pode mandar ver — tô aqui pra ajudar no que precisar!');
         return;
       }
@@ -389,7 +426,6 @@ Responda sempre em português brasileiro.`;
       console.error('Erro ao salvar:', e);
     }
 
-    // Adiciona divisor de data se necessário
     const dateLabel = formatDate(ts);
     const dividers = messagesEl.querySelectorAll('.date-divider');
     const lastDivider = dividers[dividers.length - 1];
@@ -406,13 +442,10 @@ Responda sempre em português brasileiro.`;
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  async function sendMessage() {
-    const text = inputEl.value.trim();
+  async function sendText(text) {
     if (!text) return;
-
-    inputEl.value = '';
-    inputEl.style.height = 'auto';
     sendBtn.disabled = true;
+    micBtn.disabled = true;
 
     await saveMessage('user', text);
     apiHistory.push({ role: 'user', content: text });
@@ -442,9 +475,103 @@ Responda sempre em português brasileiro.`;
     }
 
     sendBtn.disabled = false;
+    micBtn.disabled = false;
   }
 
-  // Limpar histórico
+  async function transcribeAudio(blob) {
+    statusEl.textContent = '● transcrevendo...';
+    const formData = new FormData();
+    formData.append('audio', blob, 'audio.webm');
+
+    const response = await fetch(`${WORKER_URL}/transcribe`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+    statusEl.textContent = '● online agora';
+    return data.text || '';
+  }
+
+  async function toggleRecording() {
+    if (isRecording) {
+      // Para gravação
+      mediaRecorder.stop();
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      micBtn.textContent = '🎙️';
+    } else {
+      // Inicia gravação
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          micBtn.disabled = true;
+          sendBtn.disabled = true;
+          statusEl.textContent = '● transcrevendo...';
+
+          try {
+            const text = await transcribeAudio(blob);
+            if (text) {
+              inputEl.value = text;
+              inputEl.style.height = 'auto';
+              inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
+              // Envia automaticamente
+              inputEl.value = '';
+              inputEl.style.height = 'auto';
+              await sendText(text);
+            }
+          } catch (e) {
+            statusEl.textContent = '● online agora';
+            await saveMessage('assistant', 'Não consegui transcrever o áudio. Tenta de novo! 🙏');
+          }
+
+          micBtn.disabled = false;
+          sendBtn.disabled = false;
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        micBtn.classList.add('recording');
+        micBtn.textContent = '⏹️';
+      } catch (e) {
+        await saveMessage('assistant', 'Precisei de permissão para o microfone! Verifique as configurações do Safari. 🎙️');
+      }
+    }
+  }
+
+  // Eventos
+  sendBtn.addEventListener('click', async () => {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    await sendText(text);
+  });
+
+  micBtn.addEventListener('click', toggleRecording);
+
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
+  });
+
+  inputEl.addEventListener('focus', () => {
+    setTimeout(() => messagesEl.scrollTop = messagesEl.scrollHeight, 300);
+  });
+
   clearBtn.addEventListener('click', () => modal.classList.add('show'));
   btnCancel.addEventListener('click', () => modal.classList.remove('show'));
   btnConfirm.addEventListener('click', async () => {
@@ -457,24 +584,6 @@ Responda sempre em português brasileiro.`;
     } catch (e) {
       console.error('Erro ao limpar:', e);
     }
-  });
-
-  sendBtn.addEventListener('click', sendMessage);
-
-  inputEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  inputEl.addEventListener('input', () => {
-    inputEl.style.height = 'auto';
-    inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
-  });
-
-  inputEl.addEventListener('focus', () => {
-    setTimeout(() => messagesEl.scrollTop = messagesEl.scrollHeight, 300);
   });
 
   loadHistory();
